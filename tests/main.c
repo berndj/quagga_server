@@ -1,92 +1,100 @@
-/*
- * $Id: main.c,v 1.1 2005/04/25 16:42:24 paul Exp $
- *
- * This file is part of Quagga.
- *
- * Quagga is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2, or (at your option) any
- * later version.
- *
- * Quagga is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Quagga; see the file COPYING.  If not, write to the Free
- * Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
- * 02111-1307, USA.
- */
-
 #include <zebra.h>
 
-#include <lib/version.h>
-#include "getopt.h"
-#include "thread.h"
-#include "vty.h"
+#include "log.h"
+#include "version.h"
+#include <getopt.h>
 #include "command.h"
-#include "memory.h"
+#include "thread.h"
+#include <signal.h>
 
-extern void test_init();
+/* just some includes, as usual */
 
-struct thread_master *master;
+/* you might want to put the following #defines on a zapd.h file 
+ */
+
+#define LDPD_DEFAULT_CONFIG "zapd.conf"
+/* this will be the name of the config file in the zebra
+ *  config directory (could be /usr/local/etc/)
+ */
+
+#define LDPD_VTY_PORT 26666
+/* telnet to this port to login to the zapd vty
+ */
+
+
+#define LDPD_VTYSH_PATH "/tmp/.zapd"
+/* name of the unix socket to communicate with the vtysh
+ */
+
+
+/*
+ * *  GLOBALS
+ */
+
+char config_current[] = LDPD_DEFAULT_CONFIG;
+char config_default[] = SYSCONFDIR LDPD_DEFAULT_CONFIG;
+/* zebra does #define  SYSCONFDIR
+ */
 
 struct option longopts[] = 
 {
   { "daemon",      no_argument,       NULL, 'd'},
   { "config_file", required_argument, NULL, 'f'},
   { "help",        no_argument,       NULL, 'h'},
-  { "vty_addr",    required_argument, NULL, 'A'},
   { "vty_port",    required_argument, NULL, 'P'},
   { "version",     no_argument,       NULL, 'v'},
   { 0 }
 };
 
-DEFUN (daemon_exit,
-       daemon_exit_cmd,
-       "daemon-exit",
-       "Make the daemon exit\n")
-{
-  exit(0);
+char* progname;
+/* will contain (mangled) argv[0]
+ */
+
+
+struct thread_master *master;
+/* needed by the thread implementation
+ */
+
+
+
+
+
+/* These 2 are defined somewhere else, say in libzapd.a
+ */
+#ifdef REALLY_DUMMY
+void zap_init(void) {return;};
+void zap_terminate(void) {return;};
+#else
+void zap_init(void);
+void zap_terminate(void);
+#endif
+
+
+
+void zap_init() {
+
+
 }
 
-static int timer_count;
-int
-test_timer (struct thread *thread)
-{
-  int *count = THREAD_ARG(thread);
-  
-  printf ("run %d of timer\n", (*count)++);
-  thread_add_timer (master, test_timer, count, 5);
-  return 0;
+void zap_terminate() {
+
+
 }
 
-static void
-test_timer_init()
-{
-  thread_add_timer (master, test_timer, &timer_count, 10);
-}
 
-static void
-test_vty_init()
-{
-  install_element (VIEW_NODE, &daemon_exit_cmd);
-}
 
 /* Help information display. */
 static void
-usage (char *progname, int status)
+usage (int status)
 {
   if (status != 0)
     fprintf (stderr, "Try `%s --help' for more information.\n", progname);
   else
     {    
       printf ("Usage : %s [OPTION...]\n\
-Daemon which does 'slow' things.\n\n\
+Daemon which manages ZAP.\n\n\
 -d, --daemon       Runs in daemon mode\n\
 -f, --config_file  Set configuration file name\n\
--A, --vty_addr     Set vty's bind address\n\
 -P, --vty_port     Set vty's port number\n\
 -v, --version      Print program version\n\
 -h, --help         Display this help and exit\n\
@@ -95,108 +103,197 @@ Report bugs to %s\n", progname, ZEBRA_BUG_ADDRESS);
     }
   exit (status);
 }
-
-
-/* main routine. */
-int
-main (int argc, char **argv)
-{
+
+
+int main(int argc, char** argv, char** envp) {
   char *p;
-  char *vty_addr = NULL;
-  int vty_port = 4000;
+  int vty_port = 0;
   int daemon_mode = 0;
-  char *progname;
-  struct thread thread;
   char *config_file = NULL;
-  
-  /* Set umask before anything for security */
-  umask (0027);
+  struct thread thread;
+          
+  umask(0027);
+ 
+ 
+  progname =  ((p = strrchr (argv[0], '/')) ? ++p : argv[0]);
+ 
+ /*
+  zlog_default = openzlog (progname, ZLOG_NOLOG, ZLOG_ZAP,
+			   LOG_CONS|LOG_NDELAY|LOG_PID, LOG_DAEMON);
+			   */
+			   
+  zlog_default = openzlog("testsig", ZLOG_NONE,
+                          LOG_CONS|LOG_NDELAY|LOG_PID, LOG_DAEMON);
 
-  /* get program name */
-  progname = ((p = strrchr (argv[0], '/')) ? ++p : argv[0]);
+/* initialize the log subsystem, you will have to include
+ * ZLOG_ZAP in the zlog_proto_t enum type definition in 
+ * lib/log.h
+ */
 
-  /* master init. */
-  master = thread_master_create ();
-
+     
+/* this while just reads the options */                       
   while (1) 
     {
       int opt;
-
-      opt = getopt_long (argc, argv, "dhf:A:P:v", longopts, 0);
-    
+            
+      opt = getopt_long (argc, argv, "dlf:hP:v", longopts, 0);
+                      
       if (opt == EOF)
 	break;
-
+                                    
       switch (opt) 
 	{
 	case 0:
 	  break;
-        case 'f':
-          config_file = optarg;
-          break;
 	case 'd':
 	  daemon_mode = 1;
 	  break;
-	case 'A':
-	  vty_addr = optarg;
+	case 'f':
+	  config_file = optarg;
 	  break;
 	case 'P':
-          /* Deal with atoi() returning 0 on failure */
-          if (strcmp(optarg, "0") == 0)
-            {
-              vty_port = 0;
-              break;
-            } 
-          vty_port = atoi (optarg);
-          vty_port = (vty_port ? vty_port : 4000);
-  	  break;
+	  vty_port = atoi (optarg);
+	  break;
 	case 'v':
-	  print_version (progname);
+	  // print_version ();
 	  exit (0);
 	  break;
 	case 'h':
-	  usage (progname, 0);
+	  usage (0);
 	  break;
 	default:
-	  usage (progname, 1);
+	  usage (1);
 	  break;
 	}
     }
+                                                                                                                                                                                                                                                                                              
+                                                                                                                                                                                                                                                                                              
+ 
+/* one to control them all, ... */
+  master = thread_master_create ();
+  //signal_init (master, Q_SIGC(sigs), sigs);
+/* this the main thread controlling structure,
+ * nothing to remember.
+ */
 
-  /* Library inits. */
+
+/* before you start the engine, put your safety belt on
+ */
+
+
+/* 
+ * * Library inits.
+ */
   cmd_init (1);
-  vty_init (master);
+/* initializes the command sub-system, if arg, add some commands
+ * which are mostly only useful for humans on the vty
+ */
+
+  //vty_init ();
   memory_init ();
+  access_list_init ();
+  prefix_list_init ();
+/* these are all from libzebra
+ */
 
-  /* OSPF vty inits. */
-  test_vty_init ();
+              
+/*
+ * ZAP inits
+ */
+ // zap_init();
+/* this is implemented somewhere, e.g. on libzap.a
+ * here, you could start some threads (the thread subsystem
+ * is not running yet), register some commands, ...
+ */
 
-  sort_node ();
+  sort_node();
+/* This is needed by the command subsystem to finish initialization.
+ */
+
+  /* Get configuration file. */
+  //vty_read_config (config_file, config_current, config_default);
+/* read the config file, your commands should be defined before this
+ */
+
+
 
   /* Change to the daemon program. */
-  if (daemon_mode && daemon (0, 0) < 0)
-    {
-      fprintf(stderr, "daemon failed: %s", strerror(errno));
-      exit (1);
-    }
+  if (daemon_mode)
+    daemon (0, 0);
 
   /* Create VTY socket */
-  vty_serv_sock (vty_addr, vty_port, "/tmp/.heavy.sock");
-  
-  /* Configuration file read*/
-  if (!config_file)
-    usage (progname, 1);
-  vty_read_config (config_file, NULL);
-  
-  test_timer_init();
-  
-  test_init();  
-  
+ // vty_serv_sock (vty_port ? vty_port : LDPD_VTY_PORT, LDPD_VTYSH_PATH);
+/* start the TCP and unix socket listeners
+ */
+
+
+  /* Print banner. */
+  //zlog (NULL, LOG_INFO, "ZAP (%s) starts", ZEBRA_VERSION);
+    
   /* Fetch next active thread. */
   while (thread_fetch (master, &thread))
     thread_call (&thread);
+/* this is the main event loop */
 
-  /* Not reached. */
+/* never reached */
+  return 0;
+}
+
+
+/* SIGHUP handler. */
+void 
+sighup (int sig)
+{
+  zlog (NULL, LOG_INFO, "SIGHUP received");
+}
+
+/* SIGINT handler. */
+void
+sigint (int sig)
+{
+  zlog (NULL, LOG_INFO, "Terminating on signal");
+
+  zap_terminate ();
+/* this is your clean-up function */
+
   exit (0);
 }
+
+/* SIGUSR1 handler. */
+void
+sigusr1 (int sig)
+{
+  zlog_rotate (NULL);
+}
+
+#define RETSIGTYPE void
+/* Signal wrapper. */
+RETSIGTYPE *
+signal_set (int signo, void (*func)(int))
+{
+  int ret;
+  struct sigaction sig;
+  struct sigaction osig;
+
+  sig.sa_handler = func;
+  sigemptyset (&sig.sa_mask);
+  sig.sa_flags = 0;
+#ifdef SA_RESTART
+  sig.sa_flags |= SA_RESTART;
+#endif /* SA_RESTART */
+
+  ret = sigaction (signo, &sig, &osig);
+
+  if (ret < 0) 
+    return (SIG_ERR);
+  else
+    return (osig.sa_handler);
+}
+
+
+
+
+/* zapd_main.c ends 
+----------------------------------------------------------------
+*/
 

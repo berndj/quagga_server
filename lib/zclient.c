@@ -607,7 +607,7 @@ zebra_interface_add_read (struct stream *s)
 
   /* Read interface name. */
   stream_get (ifname_tmp, s, INTERFACE_NAMSIZ);
-
+  zlog_info ("ifname_tmp %s ", ifname_tmp);
   /* Lookup/create interface by name. */
   ifp = if_get_by_name_len (ifname_tmp, strnlen(ifname_tmp, INTERFACE_NAMSIZ));
 

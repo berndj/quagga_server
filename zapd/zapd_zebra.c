@@ -21,7 +21,6 @@
  */
 
 #include <zebra.h>
-
 #include "thread.h"
 #include "command.h"
 #include "network.h"
@@ -34,7 +33,6 @@
 #include "filter.h"
 #include "plist.h"
 #include "log.h"
-
 #include "ospfd/ospfd.h"
 #include "ospfd/ospf_interface.h"
 #include "ospfd/ospf_ism.h"

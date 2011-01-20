@@ -33,9 +33,10 @@ typedef unsigned short  u_int16_t;
 typedef unsigned char   u_int8_t;
 #endif /* SUNOS_5 */
 
+/*
 #ifndef HAVE_SOCKLEN_T
 typedef int socklen_t;
-#endif /* HAVE_SOCKLEN_T */
+#endif  HAVE_SOCKLEN_T */
 
 #include <unistd.h>
 #include <stdio.h>
@@ -441,7 +442,7 @@ struct in_pktinfo
 #define ZEBRA_ROUTE_ISIS                 8
 #define ZEBRA_ROUTE_BGP                  9
 #define ZEBRA_ROUTE_HSLS		 10
-#define ZEBRA_ROUTE_ZAP                  11
+#define ZEBRA_ROUTE_MY         		 11
 #define ZEBRA_ROUTE_MAX                  12
 
 

@@ -1,0 +1,48 @@
+
+################################################################
+					
+						READ ME
+					
+################################################################
+
+Please follow the below steps to configure and install quagga
+
+1) Run `./update-autotools' to generate the configure script from the git repository.
+
+2) Type `./configure' to configure the package for your system.
+    Ex: ./configure --prefix=/usr/local
+
+3) Type `make' to compile the package.
+	3 a) Optional: You can type `make check' to run any self-tests that come with
+     		the package, generally using the just-built uninstalled binaries.
+
+4) Type `make install' to install the programs and any data files and
+     documentation.  When installing into a prefix owned by root, it is
+     recommended that the package be configured and built as a regular
+     user, and only the `make install' phase executed with root
+     privileges.
+     4 a) Optional: type `make installcheck' to repeat any self-tests, but
+     this time using the binaries in their final installed location.
+     
+5) Installing the daemon for adding and deleting routes: Go to the folder `test_daemon'
+	and run `make'. The daemon can be run from command line by `sudo ./new_daemon'. This
+	needs to be done after zebra is running. Please see below for how to run Zebra.
+	
+################################################################
+
+					POST INSTALLATION
+     
+################################################################
+
+1) Make sure the user `quagga' exists on your system and a password is assigned for the user.
+2) Copy the `zebra.conf.sample' or `ospfd.conf.sample' etc that comes with the package
+	to `/etc/quagga/zebra.conf' or `/etc/quagga/ospfd.conf'
+3) You can run zebra by going to `/usr/local/sbin' and then typing in `sudo ./zebra'. Typing
+	the command `sudo ./zebra -d' will run it as a daemon.
+4) You can login to zebra via telnet by typing in `telnet localhost zebra' or `telnet localhost
+	2601'.
+5) You can run zebra in one command line terminal and in the other run `sudo ./new_daemon' which
+	is present inside the folder `test_daemon'. The daemon will try to add and delete the routes
+	 from the zebra routing table.
+	
+	
